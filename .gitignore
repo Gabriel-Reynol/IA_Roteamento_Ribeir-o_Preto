@@ -1,0 +1,32 @@
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Ambientes virtuais
+.venv/
+venv/
+env/
+
+# VS Code
+.vscode/
+
+# Variáveis de ambiente
+.env
+.env.*
+
+# Arquivos temporários
+*.log
+*.tmp
+
+# Resultados gerados pelos algoritmos
+rota_*.json
+rotaBuscaGrupoX.html
+
+# Arquivos temporários de teste
+teste_heap.py
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
