@@ -1,9 +1,13 @@
+﻿from pathlib import Path
 
 import pandas as pd
 
-def carregar_grafo():
+DIRETORIO_PROJETO = Path(__file__).resolve().parent
+ARQUIVO_ARESTAS = DIRETORIO_PROJETO / "arestas.csv"
 
-    arestas = pd.read_csv("arestas.csv")
+
+def carregar_grafo():
+    arestas = pd.read_csv(ARQUIVO_ARESTAS)
     grafo = {}
 
     for _, linha in arestas.iterrows():

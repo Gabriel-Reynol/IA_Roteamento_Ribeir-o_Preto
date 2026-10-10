@@ -12,11 +12,11 @@ env/
 # VS Code
 .vscode/
 
-# Variáveis de ambiente
+# VariÃ¡veis de ambiente
 .env
 .env.*
 
-# Arquivos temporários
+# Arquivos temporÃ¡rios
 *.log
 *.tmp
 
@@ -24,9 +24,18 @@ env/
 rota_*.json
 rotaBuscaGrupoX.html
 
-# Arquivos temporários de teste
+# Arquivos temporÃ¡rios de teste
 teste_heap.py
 
 # Arquivos do sistema operacional
 .DS_Store
 Thumbs.db
+# Backups locais
+*.bak
+*.bak_*
+*.orig
+# Arquivos temporarios de editores
+*.swp
+*.swo
+# Cache do Streamlit
+.streamlit/secrets.toml
