@@ -57,7 +57,7 @@ Projeto acadêmico de busca em grafos para planejamento e comparação de rotas 
 Clone o repositório e entre na pasta do projeto:
 
 ```bash
-git clone https://github.com/Leosilfar/IA_Roteamento_Ribeir-o_Preto.git
+git clone https://github.com/Gabriel-Reynol/IA_Roteamento_Ribeir-o_Preto.git
 cd IA_Roteamento_Ribeir-o_Preto
 ```
 
