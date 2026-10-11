@@ -78,143 +78,268 @@ def executar_algoritmo(nome, grafo, coordenadas, origem, destino):
 
 class GraficoCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None):
-        self.figura = Figure(figsize=(13, 8), tight_layout=True)
+        self.figura = Figure(figsize=(16, 10))
         super().__init__(self.figura)
         self.setParent(parent)
 
     def desenhar(self, resultados):
+        import numpy as np
+        from matplotlib.lines import Line2D
+
         self.figura.clear()
-        eixos = self.figura.subplots(2, 2)
 
-        nomes = [r["algoritmo"] for r in resultados]
-
-        cores_d1 = [
-            "#16a34a" if r.get("desafio_1") == "Aprovado"
-            else "#dc2626" if r.get("sucesso")
-            else "#94a3b8"
-            for r in resultados
-        ]
-
-        cores_d2 = [
-            "#16a34a" if r.get("desafio_2") == "Aprovado"
-            else "#dc2626" if r.get("sucesso")
-            else "#94a3b8"
-            for r in resultados
-        ]
-
-        # 1. Tempo de busca
-        tempos_ms = [r["tempo_s"] * 1000 for r in resultados]
-        barras = eixos[0, 0].barh(nomes, tempos_ms, color=cores_d1)
-        eixos[0, 0].set_title("Tempo de busca")
-        eixos[0, 0].set_xlabel("Tempo (ms)")
-        eixos[0, 0].invert_yaxis()
-        eixos[0, 0].bar_label(barras, fmt="%.2f ms", padding=3, fontsize=8)
-        eixos[0, 0].margins(x=0.18)
-
-        # 2. N?s expandidos: escala logar?tmica facilita comparar
-        # algoritmos que expandem dezenas com os que expandem milhares.
-        expandidos = [
-            r["expandidos"] if r.get("sucesso") else 0
-            for r in resultados
-        ]
-        barras = eixos[0, 1].barh(nomes, expandidos, color=cores_d1)
-        eixos[0, 1].set_title("N?s expandidos ? cores do Desafio 1")
-        eixos[0, 1].set_xlabel("N?s expandidos (escala logar?tmica)")
-        if any(v > 0 for v in expandidos):
-            eixos[0, 1].set_xscale("symlog", linthresh=1)
-        eixos[0, 1].invert_yaxis()
-        for barra, valor in zip(barras, expandidos):
-            rotulo = str(valor) if valor > 0 else "sem rota"
-            eixos[0, 1].annotate(
-                rotulo,
-                (barra.get_width(), barra.get_y() + barra.get_height() / 2),
-                xytext=(4, 0), textcoords="offset points",
-                va="center", fontsize=8
-            )
-        eixos[0, 1].margins(x=0.22)
-
-        # 3. Dist?ncia encontrada: falhas n?o s?o desenhadas como dist?ncia zero.
-        referencia = next(
-            (
-                r["distancia_otima_km"]
-                for r in resultados
-                if r.get("distancia_otima_km") is not None
-            ),
-            None,
+        ax_tempo, ax_disp, ax_dist, ax_exc = (
+            self.figura.subplots(2, 2).flat
         )
 
+        # Margens reservadas para títulos, eixos e legenda inferior.
+        self.figura.subplots_adjust(
+            left=0.13, right=0.985,
+            top=0.90, bottom=0.17,
+            wspace=0.34, hspace=0.48
+        )
+        # Título geral removido para liberar espaço.
+
+
+        if not resultados:
+            ax_tempo.text(
+                0.5, 0.5, "Nenhum resultado disponível",
+                ha="center", va="center",
+                transform=ax_tempo.transAxes
+            )
+            self.draw()
+            return
+
+        nomes = [str(r.get("algoritmo", "Desconhecido")) for r in resultados]
+        y = np.arange(len(resultados))
+
+        verde = "#159947"
+        vermelho = "#dc3434"
+        cinza = "#94a3b8"
+        azul = "#2878b5"
+        roxo = "#7c3aed"
+
+        def numero(v):
+            try:
+                v = float(v)
+                return v if np.isfinite(v) else None
+            except (TypeError, ValueError):
+                return None
+
+        def fmt(v, casas=2):
+            return f"{v:.{casas}f}".replace(".", ",")
+
+        def cor_desafio(r, chave):
+            if not r.get("sucesso", False):
+                return cinza
+            return verde if r.get(chave) == "Aprovado" else vermelho
+
+        cores_d1 = [cor_desafio(r, "desafio_1") for r in resultados]
+        cores_d2 = [cor_desafio(r, "desafio_2") for r in resultados]
+
+        def estilo(ax):
+            ax.grid(axis="x", linestyle="--", linewidth=0.6, alpha=0.25)
+            ax.set_axisbelow(True)
+            ax.spines["top"].set_visible(False)
+            ax.spines["right"].set_visible(False)
+            ax.tick_params(axis="both", labelsize=8, pad=3)
+
+        def barras(ax, valores, cores, unidade, cor_fixa=None):
+            validos = [v for v in valores if v is not None]
+            maior = max(validos, default=1.0)
+            if maior <= 0:
+                maior = 1.0
+
+            plotados = [v if v is not None else 0 for v in valores]
+            cores_plot = [cor_fixa or c for c in cores]
+            ret = ax.barh(y, plotados, color=cores_plot, height=0.58)
+
+            for barra, valor in zip(ret, valores):
+                yy = barra.get_y() + barra.get_height() / 2
+                if valor is None:
+                    ax.annotate(
+                        "sem rota", (0, yy),
+                        xytext=(4, 0), textcoords="offset points",
+                        fontsize=7, va="center", color="#64748b"
+                    )
+                else:
+                    ax.annotate(
+                        f"{fmt(valor)} {unidade}",
+                        (valor, yy), xytext=(4, 0),
+                        textcoords="offset points",
+                        fontsize=7, va="center", clip_on=False
+                    )
+
+            ax.set_xlim(0, maior * 1.25 + 0.01)
+            ax.set_yticks(y)
+            ax.set_yticklabels(nomes, fontsize=8)
+            ax.invert_yaxis()
+            estilo(ax)
+
+        # 1. Tempo de execução: cor neutra, sem confundir rapidez com aprovação.
+        tempos = [
+            numero(r.get("tempo_s")) * 1000
+            if r.get("sucesso") and numero(r.get("tempo_s")) is not None
+            else None
+            for r in resultados
+        ]
+        barras(ax_tempo, tempos, [azul] * len(resultados), "ms", azul)
+        ax_tempo.set_title("Tempo de execução", fontsize=10, pad=8)
+        ax_tempo.set_xlabel("Tempo (ms)", fontsize=8, labelpad=4)
+
+        # 2. Dispersão: pontos numerados e legenda própria abaixo do eixo.
+        pontos = []
+        for i, r in enumerate(resultados):
+            t = numero(r.get("tempo_s"))
+            n = numero(r.get("expandidos"))
+            if r.get("sucesso") and t is not None and n is not None:
+                pontos.append((i, t * 1000, n, cores_d2[i], nomes[i]))
+
+        if pontos:
+            for i, t, n, cor, nome in pontos:
+                ax_disp.scatter(
+                    t, n, s=48, color=cor,
+                    edgecolors="white", linewidths=0.8, zorder=3
+                )
+                ax_disp.annotate(
+                    str(i + 1), (t, n),
+                    xytext=(0, 6), textcoords="offset points",
+                    ha="center", fontsize=7, fontweight="bold"
+                )
+
+            xs = [p[1] for p in pontos]
+            ys = [p[2] for p in pontos]
+            dx = max(max(xs) - min(xs), 1.0)
+            dy = max(max(ys) - min(ys), 1.0)
+            ax_disp.set_xlim(max(0, min(xs) - dx * 0.08), max(xs) + dx * 0.12)
+            ax_disp.set_ylim(max(0, min(ys) - dy * 0.12), max(ys) + dy * 0.20)
+
+            itens = [
+                Line2D(
+                    [], [], linestyle="none", marker="o",
+                    markersize=4, color=cor,
+                    label=f"{i + 1}. {nome}"
+                )
+                for i, _, _, cor, nome in pontos
+            ]
+            ax_disp.legend(
+                handles=itens,
+                loc="center left",
+                bbox_to_anchor=(1.03, 0.5),
+                ncol=1, frameon=False, fontsize=7.2,
+                columnspacing=0.8, handletextpad=0.4,
+                labelspacing=0.65, borderaxespad=0
+            )
+        else:
+            ax_disp.text(
+                0.5, 0.5, "Sem dados suficientes",
+                ha="center", va="center",
+                transform=ax_disp.transAxes
+            )
+
+        ax_disp.set_title(
+            "Eficiência: tempo × nós expandidos",
+            fontsize=10, pad=8
+        )
+        ax_disp.set_xlabel("Tempo (ms)", fontsize=8, labelpad=4)
+        ax_disp.set_ylabel("Nós expandidos", fontsize=8, labelpad=4)
+        estilo(ax_disp)
+
+        # Reserva uma coluna à direita para a legenda dos algoritmos.
+        posicao_disp = ax_disp.get_position()
+        ax_disp.set_position([
+            posicao_disp.x0,
+            posicao_disp.y0,
+            posicao_disp.width * 0.70,
+            posicao_disp.height
+        ])
+
+        # 3. Distância encontrada e referência ótima do UCS.
         distancias = [
-            r["distancia_km"] if r.get("sucesso") else 0
+            numero(r.get("distancia_km")) if r.get("sucesso") else None
             for r in resultados
         ]
-        barras = eixos[1, 0].barh(nomes, distancias, color=cores_d1)
-        eixos[1, 0].set_title("Dist?ncia encontrada")
-        eixos[1, 0].set_xlabel("Dist?ncia (km)")
-        eixos[1, 0].invert_yaxis()
-
-        if referencia is not None:
-            eixos[1, 0].axvline(
-                referencia, color="#7c3aed", linestyle="--",
-                linewidth=2, label=f"?timo: {referencia:.3f} km"
-            )
-            eixos[1, 0].legend(fontsize=8)
-
-        for barra, r in zip(barras, resultados):
-            if r.get("sucesso"):
-                rotulo = f'{r["distancia_km"]:.3f}'
-                x = barra.get_width()
-            else:
-                rotulo = "sem rota"
-                x = 0
-            eixos[1, 0].annotate(
-                rotulo,
-                (x, barra.get_y() + barra.get_height() / 2),
-                xytext=(4, 0), textcoords="offset points",
-                va="center", fontsize=8
-            )
-        eixos[1, 0].margins(x=0.22)
-
-        # 4. Excesso percentual: zero ? um resultado v?lido.
-        excessos = [
-            r["excesso_percentual"]
-            if r.get("sucesso") and r.get("excesso_percentual") is not None
-            else 0
-            for r in resultados
-        ]
-        barras = eixos[1, 1].barh(nomes, excessos, color=cores_d2)
-        eixos[1, 1].axvline(
-            15, color="#7c3aed", linestyle="--",
-            linewidth=2, label="Limite: 15%"
+        barras(ax_dist, distancias, cores_d1, "km")
+        ax_dist.set_title(
+            "Distância encontrada — Desafio 1",
+            fontsize=10, pad=8
         )
-        eixos[1, 1].set_title("Excesso sobre a dist?ncia ?tima")
-        eixos[1, 1].set_xlabel("Excesso (%)")
-        eixos[1, 1].legend(fontsize=8)
-        eixos[1, 1].invert_yaxis()
+        ax_dist.set_xlabel("Distância (km)", fontsize=8, labelpad=4)
 
-        for barra, r in zip(barras, resultados):
-            if r.get("sucesso") and r.get("excesso_percentual") is not None:
-                valor = r["excesso_percentual"]
-                rotulo = f"{valor:.2f}%"
-                x = barra.get_width()
-            else:
-                rotulo = "sem rota"
-                x = 0
-            eixos[1, 1].annotate(
-                rotulo,
-                (x, barra.get_y() + barra.get_height() / 2),
-                xytext=(4, 0), textcoords="offset points",
-                va="center", fontsize=8
+        otima = next(
+            (
+                numero(r.get("distancia_otima_km"))
+                for r in resultados
+                if numero(r.get("distancia_otima_km")) is not None
+                and numero(r.get("distancia_otima_km")) > 0
+            ),
+            None
+        )
+        if otima is not None:
+            ax_dist.axvline(otima, color=roxo, linestyle="--", linewidth=1.5)
+            ax_dist.text(
+                0.02, -0.18,
+                f"Referência UCS: {fmt(otima, 3)} km",
+                transform=ax_dist.transAxes,
+                fontsize=7, color=roxo, va="top"
             )
-        eixos[1, 1].margins(x=0.22)
 
-        for linha in eixos:
-            for eixo in linha:
-                eixo.grid(axis="x", alpha=0.25)
-                eixo.set_axisbelow(True)
+        # 4. Excesso percentual, com limite de 15%.
+        excessos = [
+            numero(r.get("excesso_percentual")) if r.get("sucesso") else None
+            for r in resultados
+        ]
 
-        self.figura.tight_layout(pad=2.0)
+        for i, (valor, cor) in enumerate(zip(excessos, cores_d2)):
+            if valor is None:
+                ax_exc.text(
+                    0.02, i, "sem rota",
+                    transform=ax_exc.get_yaxis_transform(),
+                    ha="left", va="center", fontsize=7, color="#64748b"
+                )
+            else:
+                ax_exc.hlines(i, 0, valor, color=cor, linewidth=1.7)
+                ax_exc.scatter([valor], [i], s=35, color=cor, zorder=3)
+                ax_exc.annotate(
+                    f"{fmt(valor)}%", (valor, i),
+                    xytext=(4, 0), textcoords="offset points",
+                    va="center", fontsize=7, annotation_clip=False
+                )
+
+        maior_exc = max([v for v in excessos if v is not None] + [15.0])
+        ax_exc.set_xlim(0, maior_exc + max(maior_exc * 0.25, 2))
+        ax_exc.set_yticks(y)
+        ax_exc.set_yticklabels(nomes, fontsize=8)
+        ax_exc.invert_yaxis()
+        ax_exc.axvline(15, color=roxo, linestyle="--", linewidth=1.5)
+        ax_exc.set_title("Excesso sobre a distância ótima", fontsize=10, pad=8)
+        ax_exc.set_xlabel("Excesso (%)", fontsize=8, labelpad=4)
+        ax_exc.text(
+            0.98, -0.18, "Limite: 15%",
+            transform=ax_exc.transAxes,
+            fontsize=7, color=roxo, ha="right", va="top"
+        )
+        estilo(ax_exc)
+
+        # Legenda geral numa faixa inferior exclusiva.
+        legenda = [
+            Line2D([], [], marker="s", linestyle="none", color=verde,
+                   markersize=7, label="Elegível no Desafio 2 (≤ 15%)"),
+            Line2D([], [], marker="s", linestyle="none", color=vermelho,
+                   markersize=7, label="Não elegível (> 15%)"),
+            Line2D([], [], marker="s", linestyle="none", color=cinza,
+                   markersize=7, label="Sem rota"),
+            Line2D([], [], color=roxo, linestyle="--",
+                   label="Linha de referência")
+        ]
+        self.figura.legend(
+            handles=legenda,
+            loc="lower center", bbox_to_anchor=(0.5, -0.015),
+            ncol=4, frameon=False, fontsize=7.5,
+            columnspacing=1.2, handletextpad=0.4
+        )
+
         self.draw()
-
 
 class JanelaPrincipal(QMainWindow):
     def __init__(self):
@@ -521,7 +646,7 @@ class JanelaPrincipal(QMainWindow):
 
         if origem == destino:
             QMessageBox.information(
-                self, "Origem e destino", "Escolha n?s diferentes."
+                self, "Origem e destino", "Escolha nós diferentes."
             )
             return
 
@@ -534,7 +659,7 @@ class JanelaPrincipal(QMainWindow):
         resultados = []
 
         try:
-            # UCS fornece a refer?ncia de dist?ncia ?tima.
+            # UCS fornece a referência de distância ótima.
             inicio_ucs = time.perf_counter()
             referencia = busca_custo_uniforme(
                 self.grafo, origem, destino
@@ -623,9 +748,9 @@ class JanelaPrincipal(QMainWindow):
 
             # Atualiza a tabela com os crit?rios oficiais dos desafios.
             colunas = [
-                "Algoritmo", "?tima (km)", "Dist?ncia (km)",
+                "Algoritmo", "Ótima (km)", "Distância (km)",
                 "Excesso (%)", "Tempo (ms)", "Expandidos",
-                "N?s no caminho", "Desafio 1", "Desafio 2"
+                "Nós no caminho", "Desafio 1", "Desafio 2"
             ]
             self.tabela.setColumnCount(len(colunas))
             self.tabela.setHorizontalHeaderLabels(colunas)
@@ -663,37 +788,37 @@ class JanelaPrincipal(QMainWindow):
             ]
 
             resumo = [
-                f"Compara??o conclu?da: {len(validos)}/{len(resultados)} encontraram rota.",
+                f"Comparação concluída: {len(validos)}/{len(resultados)} encontraram rota.",
                 f"Origem: {origem}",
                 f"Destino: {destino}",
-                f"Dist?ncia ?tima (UCS): {distancia_otima / 1000:.3f} km",
-                f"Desafio 1 ? rotas ?timas: {len(aprovados_1)}",
-                f"Desafio 2 ? rotas dentro de 15%: {len(aprovados_2)}",
+                f"Distância ótima (UCS): {distancia_otima / 1000:.3f} km",
+                f"Desafio 1 — rotas ótimas: {len(aprovados_1)}",
+                f"Desafio 2 — rotas dentro de 15%: {len(aprovados_2)}",
                 "",
-                f"Tempo da refer?ncia UCS: {tempo_ucs * 1000:.3f} ms",
-                "Os tempos variam entre execu??es e s?o m?tricas complementares.",
+                f"Tempo da referência UCS: {tempo_ucs * 1000:.3f} ms",
+                "Os tempos variam entre execuções e são métricas complementares.",
             ]
 
             if aprovados_1:
                 melhor = min(aprovados_1, key=lambda r: r["expandidos"])
                 resumo.append(
-                    f"Desafio 1 ? menor expans?o: {melhor['algoritmo']} "
-                    f"({melhor['expandidos']} n?s)"
+                    f"Desafio 1 ? menor expansão: {melhor['algoritmo']} "
+                    f"({melhor['expandidos']} nós)"
                 )
 
             if aprovados_2:
                 melhor = min(aprovados_2, key=lambda r: r["expandidos"])
                 resumo.append(
-                    f"Desafio 2 ? menor expans?o: {melhor['algoritmo']} "
-                    f"({melhor['expandidos']} n?s)"
+                    f"Desafio 2 ? menor expansão: {melhor['algoritmo']} "
+                    f"({melhor['expandidos']} nós)"
                 )
 
             self.resultados.setText("\n".join(resumo))
             self.botao_exportar.setEnabled(True)
-            self.statusBar().showMessage("Compara??o conclu?da.")
+            self.statusBar().showMessage("Comparação concluída.")
 
         except Exception as erro:
-            QMessageBox.critical(self, "Erro na compara??o", str(erro))
+            QMessageBox.critical(self, "Erro na comparação", str(erro))
         finally:
             self.progresso.setVisible(False)
             self.botao_comparar.setEnabled(True)
@@ -737,3 +862,4 @@ if __name__ == "__main__":
     janela = JanelaPrincipal()
     janela.show()
     sys.exit(app.exec())
+
