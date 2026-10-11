@@ -1,0 +1,8 @@
+﻿pandas
+streamlit
+folium
+plotly
+streamlit-folium
+PySide6
+matplotlib
+requests

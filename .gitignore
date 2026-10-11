@@ -1,4 +1,16 @@
 
+# Backups adicionais de desenvolvimento
+*.backup
+*.bak.*
+desktop_app_antes_*.py
+desktop_app_original.py
+desktop_app_reorganizado*.py
+desktop_app_backup.py
+
+# Relatorios locais de investigacao geográfica
+investigacao_osm_rota.json
+validacao_novas_geometrias.json
+
 # Python
 __pycache__/
 *.py[cod]
@@ -39,3 +51,10 @@ Thumbs.db
 *.swo
 # Cache do Streamlit
 .streamlit/secrets.toml
+
+# Backups de testes e experimentos
+testes/*.bak*
+experimentos/*.bak*
+
+# Backup local da interface desktop
+desktop_app.py.bak*

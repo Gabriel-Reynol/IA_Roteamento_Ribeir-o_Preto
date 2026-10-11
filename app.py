@@ -1,4 +1,4 @@
-﻿import time
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -8,6 +8,7 @@ import plotly.express as px
 from streamlit_folium import st_folium
 
 from grafo import carregar_grafo
+from geometria_mapa import construir_linha
 from ucs import busca_custo_uniforme
 from A_estrela import busca_a_estrela
 from weighted_astar import busca_weighted_a_estrela
@@ -159,7 +160,7 @@ def criar_mapa(coordenadas, origem, destino, resultados):
             continue
 
         caminho = dados["resultado"]["caminho"]
-        linha = [coordenadas[n] for n in caminho if n in coordenadas]
+        linha = construir_linha(caminho, coordenadas)
         if len(linha) < 2:
             continue
 
