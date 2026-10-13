@@ -75,6 +75,32 @@ Instale as dependências:
 ```powershell
 python -m pip install -r requirements.txt
 ```
+## Compatibilidade com versões de python:
+
+A instalação das dependências pode apresentar problemas no Python 3.15, devido a possíveis incompatibilidades com algumas bibliotecas.
+
+Caso ocorra algum erro durante a instalação das dependências (`requirements.txt`), recomendamos utilizar o Python 3.12.
+
+Para criar um ambiente virtual com Python 3.12, execute:
+
+```bash
+py -3.12 -m venv .venv
+```
+
+Ative o ambiente virtual no Git Bash:
+
+```bash
+source .venv/Scripts/activate
+```
+
+Em seguida, instale as dependências:
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+**Observação:** a compatibilidade depende das versões das bibliotecas especificadas no `requirements.txt`.
 
 ## Execução
 
