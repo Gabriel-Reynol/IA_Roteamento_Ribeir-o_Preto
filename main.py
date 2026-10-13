@@ -1,4 +1,4 @@
-import json
+﻿import json
 import pandas as pd
 
 from grafo import carregar_grafo
@@ -7,6 +7,7 @@ from A_estrela import busca_a_estrela
 from weighted_astar import busca_weighted_a_estrela
 
 
+# Mostra os detalhes de uma rota encontrada pelos algoritmos
 def mostrar_resultado(nome, resultado, origem, destino):
     if resultado is None:
         print(f"\nNenhuma rota encontrada com {nome}.")
@@ -22,6 +23,7 @@ def mostrar_resultado(nome, resultado, origem, destino):
     print("Nós expandidos:", resultado["expandidos"])
 
 
+# Salva a sequência de nós da rota em um arquivo JSON
 def salvar_rota(nome_arquivo, resultado):
     if resultado is not None:
         with open(nome_arquivo, "w", encoding="utf-8") as arquivo:
@@ -29,12 +31,14 @@ def salvar_rota(nome_arquivo, resultado):
         print(f"Caminho salvo em {nome_arquivo}")
 
 
+# Calcula a redução percentual de expansões em relação à referência
 def percentual_reducao(referencia, resultado):
     if referencia <= 0:
         return 0.0
     return (referencia - resultado) / referencia * 100
 
 
+# Executa o algoritmo selecionado e apresenta seus resultados
 def executar_busca(grafo, coordenadas, origem, destino, opcao):
     if opcao == "1":
         resultado = busca_custo_uniforme(grafo, origem, destino)
@@ -47,6 +51,7 @@ def executar_busca(grafo, coordenadas, origem, destino, opcao):
         salvar_rota("rota_astar.json", resultado)
 
     elif opcao == "3":
+        # Compara o Weighted A* com o UCS para verificar o limite de distância
         referencia = busca_custo_uniforme(grafo, origem, destino)
         resultado = busca_weighted_a_estrela(
             grafo, coordenadas, origem, destino, peso=1.14
@@ -76,6 +81,7 @@ def executar_busca(grafo, coordenadas, origem, destino, opcao):
         print(f"Expansões Weighted A*: {resultado['expandidos']}")
         print(f"Redução de expansões: {reducao:.2f}%")
 
+        # Usa o UCS como alternativa se o excesso ultrapassar o limite
         if excesso > 15.0:
             print("\nATENÇÃO: a rota Weighted A* ultrapassou 15% de excesso.")
             print("Será utilizada a rota ótima do UCS como alternativa.")
@@ -89,6 +95,7 @@ def executar_busca(grafo, coordenadas, origem, destino, opcao):
         salvar_rota("rota_desafio2.json", resultado_final)
 
     elif opcao == "4":
+        # Executa os dois algoritmos para comparar distância e expansões
         ucs = busca_custo_uniforme(grafo, origem, destino)
         astar = busca_a_estrela(grafo, coordenadas, origem, destino)
 
@@ -110,7 +117,50 @@ def executar_busca(grafo, coordenadas, origem, destino, opcao):
             print(f"Redução de expansões: {reducao:.2f}%")
 
 
+# Solicita e valida os OSMIDs até receber um par válido
+def solicitar_osmids(grafo):
+    while True:
+        try:
+            origem = int(input("Digite o OSMID de origem: "))
+            destino = int(input("Digite o OSMID de destino: "))
+        except ValueError:
+            print("Erro: digite identificadores numéricos.")
+            continue
+
+        if origem not in grafo or destino not in grafo:
+            print("Erro: origem ou destino não encontrado no mapa.")
+            continue
+
+        return origem, destino
+
+
+# Apresenta o menu e devolve a opção escolhida pelo usuário
+def escolher_algoritmo():
+    print("\nEscolha o algoritmo:")
+    print("1 - UCS (Referência ótima)")
+    print("2 - A* (Desafio 1 - rota ótima)")
+    print("3 - Weighted A* (Desafio 2 - limite de 15%)")
+    print("4 - Comparar UCS e A*")
+
+    return input("\nOpção: ").strip()
+
+
+# Pergunta se o usuário quer repetir a busca com os mesmos OSMIDs
+def perguntar_reutilizacao():
+    while True:
+        resposta = input(
+            "\nDeseja seguir com os mesmos OSMIDs? (S/N): "
+        ).strip().upper()
+
+        if resposta in ("S", "N"):
+            return resposta
+
+        print("Digite S para sim ou N para não.")
+
+
+# Carrega os dados uma única vez e controla o fluxo do programa
 def main():
+    # Carrega o mapa e prepara as coordenadas usadas nas buscas
     print("Carregando mapa de Ribeirão Preto...")
     grafo = carregar_grafo()
     nos_df = pd.read_csv("nos.csv", index_col="osmid")
@@ -123,6 +173,7 @@ def main():
     print("\nSISTEMA DE ROTEAMENTO - RIBEIRÃO PRETO")
     print("Total de nós:", len(grafo))
 
+    # Este laço permite informar novos OSMIDs quando necessário
     while True:
         print("\n--------------------------------------")
 
@@ -137,33 +188,58 @@ def main():
             print("Erro: origem ou destino não encontrado no mapa.")
             continue
 
-        print("\nEscolha o algoritmo:")
-        print("1 - UCS (Referência ótima)")
-        print("2 - A* (Desafio 1 - rota ótima)")
-        print("3 - Weighted A* (Desafio 2 - limite de 15%)")
-        print("4 - Comparar UCS e A*")
-
-        opcao = input("\nOpção: ").strip()
-
-        if opcao in ("1", "2", "3", "4"):
-            executar_busca(grafo, coordenadas, origem, destino, opcao)
-        else:
-            print("Opção inválida.")
-
+        # Este laço permite executar várias buscas com o mesmo par
         while True:
-            continuar = input(
-                "\nDeseja testar outra busca ou destino? (S/N): "
-            ).strip().upper()
+            print("\nEscolha o algoritmo:")
+            print("1 - UCS (Referência ótima)")
+            print("2 - A* (Desafio 1 - rota ótima)")
+            print("3 - Weighted A* (Desafio 2 - limite de 15%)")
+            print("4 - Comparar UCS e A*")
 
-            if continuar in ("S", "N"):
-                break
+            opcao = input("\nOpção: ").strip()
 
-            print("Digite S para sim ou N para não.")
+            if opcao in ("1", "2", "3", "4"):
+                executar_busca(grafo, coordenadas, origem, destino, opcao)
+            else:
+                print("Opção inválida.")
+                continue
 
-        if continuar == "N":
-            print("\nObrigado por utilizar o Sistema de Roteamento!")
+            # Primeiro confirma se o usuário quer continuar usando o sistema
+            while True:
+                continuar = input(
+                    "\nDeseja continuar? (S/N): "
+                ).strip().upper()
+
+                if continuar in ("S", "N"):
+                    break
+
+                print("Digite S para sim ou N para não.")
+
+            if continuar == "N":
+                print("\nObrigado por utilizar o Sistema de Roteamento!")
+                return
+
+            # Depois pergunta se o próximo teste usará os mesmos OSMIDs
+            while True:
+                mesmos_osmids = input(
+                    "\nDeseja continuar com os mesmos OSMIDs? (S/N): "
+                ).strip().upper()
+
+                if mesmos_osmids in ("S", "N"):
+                    break
+
+                print("Digite S para sim ou N para não.")
+
+            if mesmos_osmids == "S":
+                # Mantém origem e destino e retorna ao menu de algoritmos
+                continue
+
+            # Sai do laço interno para solicitar uma nova origem e destino
             break
 
-
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nPrograma encerrado pelo usuário.")
+
